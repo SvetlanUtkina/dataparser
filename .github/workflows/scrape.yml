@@ -1,0 +1,78 @@
+name: Collect car listings
+
+on:
+  workflow_dispatch:
+    inputs:
+      brand:
+        description: "Brand URL name, such as bmw or audi"
+        required: true
+        default: bmw
+        type: string
+      sort:
+        description: "Sorting order"
+        required: true
+        default: date_desc
+        type: choice
+        options:
+          - date_desc
+          - date_asc
+          - brand_asc
+          - brand_desc
+          - year_asc
+          - year_desc
+          - volume_asc
+          - volume_desc
+          - mileage_asc
+          - mileage_desc
+          - price_asc
+          - price_desc
+
+permissions:
+  contents: read
+
+concurrency:
+  group: collect-car-listings
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Download repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Build Docker image
+        run: docker build -t car-scraper:run .
+
+      - name: Run parser tests
+        run: >-
+          docker run --rm
+          --mount "type=bind,source=$GITHUB_WORKSPACE/tests,target=/app/tests,readonly"
+          --entrypoint python
+          car-scraper:run -m unittest discover -s tests -v
+
+      - name: Run scraper
+        env:
+          SCRAPER_BRAND: ${{ inputs.brand }}
+          SCRAPER_SORT: ${{ inputs.sort }}
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/data"
+
+          docker run --rm \
+            --user "$(id -u):$(id -g)" \
+            --mount "type=bind,source=$GITHUB_WORKSPACE/data,target=/app/data" \
+            car-scraper:run \
+            --brand "$SCRAPER_BRAND" \
+            --sort "$SCRAPER_SORT"
+
+      - name: Save downloadable results
+        uses: actions/upload-artifact@v4
+        with:
+          name: listings-${{ github.run_id }}-${{ github.run_attempt }}
+          path: data/listings.json
+          if-no-files-found: error
+          retention-days: 7
