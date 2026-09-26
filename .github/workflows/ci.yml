@@ -31,5 +31,17 @@ jobs:
       - name: Test parser
         run: python -m unittest discover -s tests -v
 
+      # Audit the exact packages installed for tests, including transitive dependencies.
+      - name: Record installed dependency versions
+        run: python -m pip freeze > requirements-audit.txt
+
+      - name: Install security scanner
+        run: |
+          python -m venv /tmp/pip-audit-env
+          /tmp/pip-audit-env/bin/python -m pip install pip-audit
+
+      - name: Check dependencies for known vulnerabilities
+        run: /tmp/pip-audit-env/bin/python -m pip_audit --no-deps -r requirements-audit.txt
+
       - name: Build Docker image
         run: docker build --tag car-scraper:ci .
