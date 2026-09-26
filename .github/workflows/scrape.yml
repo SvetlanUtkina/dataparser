@@ -69,10 +69,19 @@ jobs:
             --brand "$SCRAPER_BRAND" \
             --sort "$SCRAPER_SORT"
 
+      - name: Show listings in run summary
+        run: |
+          docker run --rm \
+            --mount "type=bind,source=$GITHUB_WORKSPACE/data,target=/app/data,readonly" \
+            --entrypoint python \
+            car-scraper:run src/summary.py >> "$GITHUB_STEP_SUMMARY"
+
       - name: Save downloadable results
         uses: actions/upload-artifact@v4
         with:
           name: listings-${{ github.run_id }}-${{ github.run_attempt }}
-          path: data/listings.json
+          path: |
+            data/listings.json
+            data/listings.csv
           if-no-files-found: error
           retention-days: 7

@@ -1,4 +1,5 @@
 import argparse
+import csv
 import re
 import json
 from pathlib import Path
@@ -81,6 +82,27 @@ def parse_results(html: str, brand: str) -> list[dict]:
     return results
 
 
+def write_csv(listings: list[dict], output_path: Path) -> None:
+    """Export readable columns without interpreting scraped text as formulas."""
+    columns = [
+        ("brand", "Brand"), ("model", "Model"), ("year", "Year"),
+        ("mileage", "Mileage"), ("price", "Price"), ("url", "Listing URL"),
+    ]
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    # newline avoids extra blank rows on Windows; UTF-8 BOM helps Excel too.
+    with output_path.open("w", newline="", encoding="utf-8-sig") as handle:
+        writer = csv.writer(handle)
+        writer.writerow([label for _, label in columns])
+        for listing in listings:
+            values = []
+            for key, _ in columns:
+                value = str(listing.get(key) or "")
+                # Quoting alone does not stop spreadsheet formula interpretation.
+                if value.lstrip().startswith(("=", "+", "-", "@")) or value.startswith(("\t", "\r", "\n")):
+                    value = "'" + value
+                values.append(value)
+            writer.writerow(values)
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Collect SS.lv car listings")
     parser.add_argument("--brand", type=brand_slug, default="bmw", help="Brand URL name, e.g. audi")
@@ -94,7 +116,9 @@ def main() -> None:
         encoding="utf-8",
     )
 
-    print(f"Saved {len(listings)} listings to {OUTPUT_FILE}")
+    csv_file = OUTPUT_FILE.with_suffix(".csv")
+    write_csv(listings, csv_file)
+    print(f"Saved {len(listings)} listings to {OUTPUT_FILE} and {csv_file}")
 
 
 if __name__ == "__main__":
