@@ -18,15 +18,19 @@ def fetch_results(brand: str) -> list[dict]:
         response = session.get(url, timeout=20)
         response.raise_for_status()
 
-    soup = BeautifulSoup(response.text, "html.parser")
+    return parse_results(response.text, brand)
+
+
+def parse_results(html: str, brand: str) -> list[dict]:
+    soup = BeautifulSoup(html, "html.parser")
     results = []
 
-    # Same row selector and ten-row limit as your original script.
+    
     for row in soup.select("tr[id^=tr_]")[:10]:
         cols = row.find_all("td")
         title_tag = row.select_one("a.am")
 
-        # Skip rows that don't contain a usable listing.
+       
         if title_tag is None or not title_tag.get("href"):
             continue
         if len(cols) < 8:
