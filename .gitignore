@@ -1,0 +1,13 @@
+﻿.venv/
+__pycache__/
+*.pyc
+
+# Local secrets
+.env
+.env.*
+!.env.example
+*.session
+*.session-journal
+
+# Generated output
+data/
