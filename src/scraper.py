@@ -1,3 +1,5 @@
+import argparse
+import re
 import json
 from pathlib import Path
 from urllib.parse import urljoin
@@ -7,12 +9,32 @@ from bs4 import BeautifulSoup
 
 
 BASE_URL = "https://www.ss.lv"
-BRAND = "bmw"
+sorting_options = {
+    "date_desc": "",
+    "date_asc": "fDgSeF4S.html",
+    "brand_asc": "fDgSeF4QFDwT.html",
+    "brand_desc": "fDgSeF4QFDwS.html",
+    "year_asc": "fDgSeF4SHTwT.html",
+    "year_desc": "fDgSeF4SHTwS.html",
+    "volume_asc": "fDgSeF4SEDwT.html",
+    "volume_desc": "fDgSeF4SEDwS.html",
+    "mileage_asc": "fDgSeF4SEzwT.html",
+    "mileage_desc": "fDgSeF4SEzwS.html",
+    "price_asc": "fDgSeF4belM=.html",
+    "price_desc": "fDgSeF4belI=.html",
+}
+
+
+def brand_slug(value: str) -> str:
+    value = value.lower()
+    if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", value):
+        raise argparse.ArgumentTypeError("Use a brand URL name such as bmw or alfa-romeo")
+    return value
 OUTPUT_FILE = Path("data/listings.json")
 
 
-def fetch_results(brand: str) -> list[dict]:
-    url = f"{BASE_URL}/lv/transport/cars/{brand}/filter/"
+def fetch_results(brand: str, sort: str = "date_desc") -> list[dict]:
+    url = f"{BASE_URL}/lv/transport/cars/{brand}/filter/" + sorting_options[sort]
 
     with requests.Session() as session:
         response = session.get(url, timeout=20)
@@ -60,7 +82,11 @@ def parse_results(html: str, brand: str) -> list[dict]:
 
 
 def main() -> None:
-    listings = fetch_results(BRAND)
+    parser = argparse.ArgumentParser(description="Collect SS.lv car listings")
+    parser.add_argument("--brand", type=brand_slug, default="bmw", help="Brand URL name, e.g. audi")
+    parser.add_argument("--sort", choices=sorting_options, default="date_desc")
+    args = parser.parse_args()
+    listings = fetch_results(args.brand, args.sort)
 
     OUTPUT_FILE.parent.mkdir(parents=True, exist_ok=True)
     OUTPUT_FILE.write_text(

@@ -10,4 +10,4 @@ RUN useradd --create-home appuser \
 COPY src/ ./src/
 USER appuser
 
-CMD ["python", "src/scraper.py"]
+ENTRYPOINT ["python", "src/scraper.py"]
